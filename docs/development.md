@@ -34,7 +34,26 @@ PRIVATE_OBA_API_KEY="test"
 > [!TIP]
 > OBA API usage may be rate-limited. Contact the project admins via [Slack](https://opentransitsoftwarefoundation.org/join-our-slack/) if you encounter issues.
 
-### 4. Testing
+### 4. Mock OBA server (optional)
+
+`npm run mock` serves a fake OneBusAway API on port 4010, so the board can be developed without a
+live upstream or an API key. Point the app at it with a shell override, which beats `.env` and
+leaves your real credentials alone:
+
+```bash
+npm run mock                                          # terminal 1
+PUBLIC_OBA_SERVER_URL=http://localhost:4010/ npm run dev   # terminal 2
+```
+
+Then open `/stops/1_1` (four routes, one per crowding level, plus a canceled trip and a service
+alert) or `/stops/1_1+1_2` for the multi-stop board.
+
+Edit `scripts/mock-oba/scenario.js` to change the agency, routes, stops, alerts, and departures —
+arrival times, delays, occupancy status, and cancellations are all set there. Env knobs for
+failure paths (`MOCK_OBA_FAIL`, `MOCK_OBA_EMPTY`, `MOCK_OBA_DELAY`, `MOCK_OBA_PORT`) are
+documented at the top of `scripts/mock-oba/server.js`.
+
+### 5. Testing
 
 * Each component or utility has an accompanying `.test.js` file.
 * Ensure your changes do not break existing tests.
