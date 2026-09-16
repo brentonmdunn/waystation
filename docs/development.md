@@ -53,6 +53,24 @@ arrival times, delays, occupancy status, and cancellations are all set there. En
 failure paths (`MOCK_OBA_FAIL`, `MOCK_OBA_EMPTY`, `MOCK_OBA_DELAY`, `MOCK_OBA_PORT`) are
 documented at the top of `scripts/mock-oba/server.js`.
 
+The server also exposes a runtime control seam, `/__control`, for tools (such as `npm run
+ui-diff`) that need to flip failure modes or freeze the clock without restarting the process:
+
+```bash
+curl http://localhost:4010/__control                                # -> current state
+curl -X POST http://localhost:4010/__control -d '{"mode":"fail"}'    # switch to 500s
+curl -X POST http://localhost:4010/__control -d '{"mode":"normal","now":null}'  # restore
+```
+
+`GET /__control` returns the current `{mode, delay, now}`; `POST /__control` merges a partial
+JSON body into that state and returns the result. `mode` is one of `normal` | `empty` | `fail`;
+`delay` is ms added to every data response; `now` pins the epoch-ms the server treats as "the
+time" (`null` uses the real clock), which makes departure minutes reproducible across repeated
+requests. Absent keys are left alone; an invalid `mode` or non-numeric `delay` leaves the state
+untouched and returns `400 {"error": "..."}`. `/__control` always answers immediately, ahead of
+the artificial delay and the fail check, so it works even while the mock is pretending to be slow
+or down.
+
 ### 5. Testing
 
 * Each component or utility has an accompanying `.test.js` file.

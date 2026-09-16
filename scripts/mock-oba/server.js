@@ -20,14 +20,47 @@
 //   MOCK_OBA_DELAY=2000       delay every response by N ms
 //   MOCK_OBA_FAIL=1           return HTTP 500 (proxy serves cached data as stale, else 503)
 //   MOCK_OBA_EMPTY=1          return `"data": null` (the board shows its empty state)
+//
+// The knobs above only seed the initial state; a second control surface lets a caller (e.g.
+// scripts/ui-diff) flip them at runtime without restarting the process:
+//   GET  /__control          -> 200 {"mode","delay","now"}   current state
+//   POST /__control  <json>  -> 200 {"mode","delay","now"}   merges a partial state and
+//                                                             returns the result
+// mode is one of 'normal' | 'empty' | 'fail'. delay is ms added to every data response. now is
+// an epoch-ms number the server pretends is "the time", or null to use the real clock — pinning
+// it is what makes department minutes (computed from "now") reproducible across screenshots.
+// Absent keys in the POST body are left alone; `"now": null` explicitly clears the pin. An
+// invalid mode or non-numeric delay leaves the state untouched and answers 400 {"error"}.
+// /__control always answers immediately, before the artificial delay and before the fail check,
+// so a caller can poll or flip modes even while MOCK_OBA_DELAY/MOCK_OBA_FAIL are in effect.
 import http from 'node:http';
 
 import { agency, alerts, departures, routes, stops } from './scenario.js';
 
 const PORT = Number(process.env.MOCK_OBA_PORT) || 4010;
-const DELAY = Number(process.env.MOCK_OBA_DELAY) || 0;
-const FAIL = process.env.MOCK_OBA_FAIL === '1';
-const EMPTY = process.env.MOCK_OBA_EMPTY === '1';
+
+const MODES = new Set(['normal', 'empty', 'fail']);
+
+// The single source of truth for mode/delay/now, seeded from the env vars above so the existing
+// manual workflow (set an env var, start the server) still works unchanged. /__control mutates
+// this object in place.
+const initialMode =
+	process.env.MOCK_OBA_FAIL === '1'
+		? 'fail'
+		: process.env.MOCK_OBA_EMPTY === '1'
+			? 'empty'
+			: 'normal';
+const state = {
+	mode: initialMode,
+	delay: Number(process.env.MOCK_OBA_DELAY) || 0,
+	now: null
+};
+
+// Every timestamp baked into a response goes through this instead of a bare Date.now(), so
+// pinning state.now makes a capture's output byte-identical across repeated requests.
+function nowMs() {
+	return state.now ?? Date.now();
+}
 
 const MINUTE = 60_000;
 
@@ -201,7 +234,7 @@ function tripBean(stopKey, dep, i) {
 }
 
 function arrivalsForStop(stopKey) {
-	const now = Date.now();
+	const now = nowMs();
 	const list = departuresFor(stopKey);
 	const alertKeys = [...new Set(list.flatMap((d) => d.alerts ?? []))];
 	const routeKeys = [...new Set(list.map((d) => d.route))];
@@ -280,15 +313,74 @@ function handle(pathname) {
 	return undefined;
 }
 
+// Collects the request body for POST /__control. Bodies here are a few bytes of JSON, so
+// buffering in full (rather than streaming) is fine.
+function readBody(req) {
+	return new Promise((resolve, reject) => {
+		let raw = '';
+		req.on('data', (chunk) => (raw += chunk));
+		req.on('end', () => resolve(raw));
+		req.on('error', reject);
+	});
+}
+
+// Applies a partial MockState patch, validating before mutating anything so an invalid patch
+// leaves `state` untouched. Returns an error message, or undefined on success.
+function applyControlPatch(patch) {
+	if (patch.mode !== undefined && !MODES.has(patch.mode)) {
+		return `invalid mode: ${JSON.stringify(patch.mode)}`;
+	}
+	if (patch.delay !== undefined && typeof patch.delay !== 'number') {
+		return `invalid delay: ${JSON.stringify(patch.delay)}`;
+	}
+	if (patch.now !== undefined && patch.now !== null && typeof patch.now !== 'number') {
+		return `invalid now: ${JSON.stringify(patch.now)}`;
+	}
+
+	if (patch.mode !== undefined) state.mode = patch.mode;
+	if (patch.delay !== undefined) state.delay = patch.delay;
+	if (patch.now !== undefined) state.now = patch.now;
+	return undefined;
+}
+
+async function handleControl(req, res) {
+	if (req.method === 'GET') {
+		res.end(JSON.stringify(state));
+		return;
+	}
+
+	let patch;
+	try {
+		patch = JSON.parse((await readBody(req)) || '{}');
+	} catch {
+		res.statusCode = 400;
+		res.end(JSON.stringify({ error: 'invalid JSON body' }));
+		return;
+	}
+
+	const error = applyControlPatch(patch);
+	if (error) {
+		res.statusCode = 400;
+		res.end(JSON.stringify({ error }));
+		return;
+	}
+	res.end(JSON.stringify(state));
+}
+
 http
 	.createServer(async (req, res) => {
 		const { pathname } = new URL(req.url, `http://localhost:${PORT}`);
 		res.setHeader('Content-Type', 'application/json');
 
-		if (DELAY) await new Promise((resolve) => setTimeout(resolve, DELAY));
+		// Always answers immediately, ahead of the artificial delay and the fail check below, so
+		// a caller can flip modes (or just poll) even while the mock is pretending to be slow or
+		// down.
+		if (pathname === '/__control') return handleControl(req, res);
 
-		if (FAIL) {
-			console.log(`500 ${pathname} (MOCK_OBA_FAIL)`);
+		if (state.delay) await new Promise((resolve) => setTimeout(resolve, state.delay));
+
+		if (state.mode === 'fail') {
+			console.log(`500 ${pathname} (mode=fail)`);
 			res.statusCode = 500;
 			return res.end(JSON.stringify({ code: 500, text: 'Mock failure', version: 2, data: null }));
 		}
@@ -300,14 +392,14 @@ http
 			return res.end(JSON.stringify({ code: 404, text: 'Not mocked', version: 2, data: null }));
 		}
 
-		console.log(`200 ${pathname}${EMPTY ? ' (MOCK_OBA_EMPTY)' : ''}`);
+		console.log(`200 ${pathname}${state.mode === 'empty' ? ' (mode=empty)' : ''}`);
 		res.end(
 			JSON.stringify({
 				code: 200,
-				currentTime: Date.now(),
+				currentTime: nowMs(),
 				text: 'OK',
 				version: 2,
-				data: EMPTY ? null : data
+				data: state.mode === 'empty' ? null : data
 			})
 		);
 	})
