@@ -23,7 +23,8 @@ import {
 	paginateArrivals,
 	MAX_BOARD_ROWS,
 	formatAlertWindow,
-	splitStopName
+	splitStopName,
+	isNightMode
 } from '$lib/formatters';
 
 afterEach(() => {
@@ -595,5 +596,53 @@ describe('paginateArrivals', () => {
 		// Window says this screen owns 4 rows, but only 3 are currently live -
 		// e.g. a bus just crossed the departed cutoff. No error, no fabricated rows.
 		expect(paginateArrivals(three, 0, 4)).toEqual(three);
+	});
+});
+
+describe('isNightMode', () => {
+	// new Date(2026, 0, 1, h, m) - fixed local date/time, immune to CI timezone.
+	const at = (hours, minutes) => new Date(2026, 0, 1, hours, minutes);
+
+	test('non-wrapping window (09:00-17:00): true inside, false at/after the boundaries', () => {
+		expect(isNightMode(at(12, 0), '09:00', '17:00')).toBe(true);
+		expect(isNightMode(at(8, 59), '09:00', '17:00')).toBe(false);
+		expect(isNightMode(at(17, 0), '09:00', '17:00')).toBe(false);
+	});
+
+	test('wrapping window (22:00-06:00): true across midnight, false during the day', () => {
+		expect(isNightMode(at(2, 0), '22:00', '06:00')).toBe(true);
+		expect(isNightMode(at(23, 30), '22:00', '06:00')).toBe(true);
+		expect(isNightMode(at(12, 0), '22:00', '06:00')).toBe(false);
+	});
+
+	test('start is inclusive and end is exclusive, for both window shapes', () => {
+		expect(isNightMode(at(9, 0), '09:00', '17:00')).toBe(true);
+		expect(isNightMode(at(17, 0), '09:00', '17:00')).toBe(false);
+		expect(isNightMode(at(22, 0), '22:00', '06:00')).toBe(true);
+		expect(isNightMode(at(6, 0), '22:00', '06:00')).toBe(false);
+	});
+
+	test('equal bounds means the window is disabled', () => {
+		expect(isNightMode(at(22, 0), '22:00', '22:00')).toBe(false);
+	});
+
+	test('missing or empty bounds disable the window', () => {
+		expect(isNightMode(at(12, 0), '', '17:00')).toBe(false);
+		expect(isNightMode(at(12, 0), '09:00', '')).toBe(false);
+		expect(isNightMode(at(12, 0), undefined, '17:00')).toBe(false);
+		expect(isNightMode(at(12, 0), '09:00', undefined)).toBe(false);
+		expect(isNightMode(at(12, 0), null, '17:00')).toBe(false);
+		expect(isNightMode(at(12, 0), '09:00', null)).toBe(false);
+	});
+
+	test('malformed HH:mm bounds disable the window', () => {
+		expect(isNightMode(at(12, 0), '24:00', '17:00')).toBe(false);
+		expect(isNightMode(at(12, 0), '7:00', '17:00')).toBe(false);
+		expect(isNightMode(at(12, 0), 'aa:bb', '17:00')).toBe(false);
+	});
+
+	test('an invalid or non-Date "now" is always false', () => {
+		expect(isNightMode(new Date('x'), '09:00', '17:00')).toBe(false);
+		expect(isNightMode('2026-01-01T12:00:00', '09:00', '17:00')).toBe(false);
 	});
 });

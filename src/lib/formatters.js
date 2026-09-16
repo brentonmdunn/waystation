@@ -1,6 +1,7 @@
 import * as t from '$lib/paraglide/messages.js';
 import { getLocale } from './paraglide/runtime';
 import { Duration } from 'luxon';
+import { parseHHMM } from '$lib/config/night-mode.js';
 
 /**
  * Format seconds into a human-readable time
@@ -274,6 +275,26 @@ export function formatCurrentTime(date) {
  */
 export function generateRandomID(tripID, stopID) {
 	return `${tripID ?? '0'}-${stopID ?? '0'}-${Math.floor(Math.random() * 10000)}`;
+}
+
+/**
+ * Whether local `now` is in the [start, end) window; wraps past midnight.
+ * @param {Date} now
+ * @param {string} start - "HH:mm"
+ * @param {string} end - "HH:mm"
+ * @returns {boolean}
+ */
+export function isNightMode(now, start, end) {
+	if (!(now instanceof Date) || isNaN(now.getTime())) return false;
+
+	const startMinutes = parseHHMM(start);
+	const endMinutes = parseHHMM(end);
+	if (startMinutes === null || endMinutes === null || startMinutes === endMinutes) return false;
+
+	const nowMinutes = now.getHours() * 60 + now.getMinutes();
+	return startMinutes < endMinutes
+		? nowMinutes >= startMinutes && nowMinutes < endMinutes
+		: nowMinutes >= startMinutes || nowMinutes < endMinutes;
 }
 
 /**
