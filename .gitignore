@@ -33,3 +33,6 @@ coverage
 settings.local.json
 # Playwright MCP session artifacts
 .playwright-mcp/
+
+# UI diff runs
+.ui-diff/

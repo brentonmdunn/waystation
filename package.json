@@ -14,7 +14,8 @@
 		"format": "prettier --write .",
 		"lint": "prettier --check . && eslint .",
 		"test:unit": "vitest --coverage",
-		"test": "npm run test:unit -- --run"
+		"test": "npm run test:unit -- --run",
+		"ui-diff": "node scripts/ui-diff/index.js"
 	},
 	"devDependencies": {
 		"@eslint/compat": "^1.2.5",
