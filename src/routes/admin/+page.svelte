@@ -31,9 +31,6 @@
 	);
 	const regionName = $derived(localConfig.branding.regionName || data.regionName);
 	const nightControlsDisabled = $derived(!localConfig.nightModeEnabled);
-	const minimalOptionsDisabled = $derived(
-		nightControlsDisabled || localConfig.nightModeStyle !== 'MINIMAL'
-	);
 
 	/**
 	 * Check night-mode fields that the UI should catch, beyond what the server validates.
@@ -268,34 +265,36 @@
 					nightControlsDisabled
 				)}
 			</div>
-			<div class="flex flex-col gap-3 md:flex-row">
-				<div
-					class="flex w-full flex-col gap-y-3 rounded-xl border-4 border-gray-300 p-3"
-					class:opacity-50={minimalOptionsDisabled}
-				>
-					<label class="flex items-center gap-x-2 text-base font-medium">
-						<input
-							type="checkbox"
-							bind:checked={localConfig.nightModePixelShift}
-							disabled={minimalOptionsDisabled}
-						/>
-						Drift content (pixel shift)
-					</label>
+			{#if localConfig.nightModeStyle === 'MINIMAL'}
+				<div class="flex flex-col gap-3 md:flex-row">
+					<div
+						class="flex w-full flex-col gap-y-3 rounded-xl border-4 border-gray-300 p-3"
+						class:opacity-50={nightControlsDisabled}
+					>
+						<label class="flex items-center gap-x-2 text-base font-medium">
+							<input
+								type="checkbox"
+								bind:checked={localConfig.nightModePixelShift}
+								disabled={nightControlsDisabled}
+							/>
+							Drift content (pixel shift)
+						</label>
+					</div>
+					<div
+						class="flex w-full flex-col gap-y-3 rounded-xl border-4 border-gray-300 p-3"
+						class:opacity-50={nightControlsDisabled}
+					>
+						<label class="flex items-center gap-x-2 text-base font-medium">
+							<input
+								type="checkbox"
+								bind:checked={localConfig.nightModeHideChrome}
+								disabled={nightControlsDisabled}
+							/>
+							Hide logo and footer
+						</label>
+					</div>
 				</div>
-				<div
-					class="flex w-full flex-col gap-y-3 rounded-xl border-4 border-gray-300 p-3"
-					class:opacity-50={minimalOptionsDisabled}
-				>
-					<label class="flex items-center gap-x-2 text-base font-medium">
-						<input
-							type="checkbox"
-							bind:checked={localConfig.nightModeHideChrome}
-							disabled={minimalOptionsDisabled}
-						/>
-						Hide logo and footer
-					</label>
-				</div>
-			</div>
+			{/if}
 		</div>
 
 		<!-- Board Branding -->
