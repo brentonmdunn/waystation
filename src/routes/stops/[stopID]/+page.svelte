@@ -4,6 +4,7 @@
 
 	import Board from '$components/board/board.svelte';
 	import MultiStopBoard from '$components/board/multi-stop-board.svelte';
+	import NightView from '$components/board/night-view.svelte';
 	import {
 		computeScreenWindow,
 		diffArrivals,
@@ -196,7 +197,18 @@
 
 <div class="board-stage-wrap">
 	<div id="board-stage" class="board-stage theme-departure theme-{theme} theme-{colorMode}">
-		{#if isMultiStop}
+		{#if nightStyle === 'MINIMAL'}
+			<NightView
+				arrivals={pagedArrivals}
+				{now}
+				stopName={primary?.name ?? ''}
+				agencyName={data.regionName}
+				agencyLogo={data.logoUrl}
+				{lastUpdatedAt}
+				{isStale}
+				{fetchFailed}
+			/>
+		{:else if isMultiStop}
 			<MultiStopBoard
 				agencyName={data.regionName}
 				agencyLogo={data.logoUrl}
