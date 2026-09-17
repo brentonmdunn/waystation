@@ -5,6 +5,7 @@ import {
 	NIGHT_MODE_STYLES,
 	normalizeNightMode,
 	parseHHMM,
+	pixelShiftOffset,
 	validateNightMode
 } from './night-mode.js';
 
@@ -167,6 +168,61 @@ describe('normalizeNightMode', () => {
 		});
 		expect(normalized.nightModePixelShift).toBe(false);
 		expect(normalized.nightModeHideChrome).toBe(false);
+	});
+});
+
+describe('pixelShiftOffset', () => {
+	const stepMs = 5 * 60_000;
+
+	it('stays within +/- amplitude for many inputs', () => {
+		for (let step = 0; step < 200; step += 1) {
+			const { offsetX, offsetY } = pixelShiftOffset(step * stepMs);
+			expect(Math.abs(offsetX)).toBeLessThanOrEqual(24);
+			expect(Math.abs(offsetY)).toBeLessThanOrEqual(24);
+		}
+	});
+
+	it('gives the same output for the same input', () => {
+		expect(pixelShiftOffset(12 * stepMs)).toEqual(pixelShiftOffset(12 * stepMs));
+	});
+
+	it('gives the same offset for the same 5-minute step', () => {
+		const start = pixelShiftOffset(3 * stepMs);
+		const middle = pixelShiftOffset(3 * stepMs + 4 * 60_000);
+		expect(middle).toEqual(start);
+	});
+
+	it('moves to an adjacent cell on each consecutive step, including the wrap from 8 to 0', () => {
+		let previous = pixelShiftOffset(0);
+		for (let step = 1; step <= 9; step += 1) {
+			const current = pixelShiftOffset(step * stepMs);
+			expect(current).not.toEqual(previous);
+			expect(Math.abs(current.offsetX - previous.offsetX)).toBeLessThanOrEqual(24);
+			expect(Math.abs(current.offsetY - previous.offsetY)).toBeLessThanOrEqual(24);
+			previous = current;
+		}
+	});
+
+	it('respects a custom amplitude', () => {
+		const { offsetX, offsetY } = pixelShiftOffset(stepMs, { amplitude: 10 });
+		expect(Math.abs(offsetX)).toBeLessThanOrEqual(10);
+		expect(Math.abs(offsetY)).toBeLessThanOrEqual(10);
+	});
+
+	it('respects a custom stepMinutes', () => {
+		const oneMinuteStep = pixelShiftOffset(60_000, { stepMinutes: 1 });
+		const anotherOneMinuteStep = pixelShiftOffset(2 * 60_000, { stepMinutes: 1 });
+		expect(oneMinuteStep).not.toEqual(anotherOneMinuteStep);
+	});
+
+	it('returns zero offset for NaN input', () => {
+		expect(pixelShiftOffset(NaN)).toEqual({ offsetX: 0, offsetY: 0 });
+	});
+
+	it('does not throw and stays in bounds for negative input', () => {
+		const { offsetX, offsetY } = pixelShiftOffset(-7 * stepMs);
+		expect(Math.abs(offsetX)).toBeLessThanOrEqual(24);
+		expect(Math.abs(offsetY)).toBeLessThanOrEqual(24);
 	});
 });
 

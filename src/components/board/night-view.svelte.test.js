@@ -62,7 +62,8 @@ describe('NightView', () => {
 				arrivals: [arrival()],
 				now,
 				agencyName: 'Open Transit Software Foundation',
-				agencyLogo: '/logo.png'
+				agencyLogo: '/logo.png',
+				hideChrome: false
 			}
 		});
 		const header = container.querySelector('[data-testid="night-chrome-header"]');
@@ -72,9 +73,63 @@ describe('NightView', () => {
 
 	test('shows the updated time in the footer when lastUpdatedAt is set', () => {
 		const { container } = render(NightView, {
-			props: { arrivals: [arrival()], now, lastUpdatedAt: now.getTime() }
+			props: { arrivals: [arrival()], now, lastUpdatedAt: now.getTime(), hideChrome: false }
 		});
 		const footer = container.querySelector('[data-testid="night-chrome-footer"]');
 		expect(footer.textContent).toContain('UPDATED');
+	});
+
+	test('hides chrome by default: no header, footer, logo, or agency name', () => {
+		const { container } = render(NightView, {
+			props: {
+				arrivals: [arrival()],
+				now,
+				stopName: 'Pine St & 3rd Ave',
+				agencyName: 'Open Transit Software Foundation',
+				agencyLogo: '/logo.png',
+				lastUpdatedAt: now.getTime()
+			}
+		});
+		expect(container.querySelector('[data-testid="night-chrome-header"]')).toBeNull();
+		expect(container.querySelector('[data-testid="night-chrome-footer"]')).toBeNull();
+		expect(container.querySelector('img')).toBeNull();
+		expect(container.textContent).not.toContain('Open Transit Software Foundation');
+		expect(container.textContent).toContain('Pine St & 3rd Ave');
+		expect(container.querySelectorAll('[data-testid="night-departure"]')).toHaveLength(1);
+	});
+
+	test('disables the pixel-shift wrapper when pixelShift is false', () => {
+		const { container } = render(NightView, {
+			props: { arrivals: [arrival()], now, pixelShift: false }
+		});
+		expect(container.querySelector('[data-testid="pixel-shift"]')).toBeNull();
+	});
+
+	test('renders a pixel-shift wrapper with a transform when pixelShift is true', () => {
+		const { container } = render(NightView, {
+			props: { arrivals: [arrival()], now, pixelShift: true }
+		});
+		const wrapper = container.querySelector('[data-testid="pixel-shift"]');
+		expect(wrapper).not.toBeNull();
+		expect(wrapper.style.transform).toMatch(/translate/);
+	});
+
+	test('the pixel-shift transform changes between now values 5 minutes apart', () => {
+		const laterNow = new Date(now.getTime() + 5 * 60_000);
+
+		const { container: firstContainer } = render(NightView, {
+			props: { arrivals: [arrival()], now, pixelShift: true }
+		});
+		const firstTransform = firstContainer.querySelector('[data-testid="pixel-shift"]').style
+			.transform;
+		cleanup();
+
+		const { container: secondContainer } = render(NightView, {
+			props: { arrivals: [arrival()], now: laterNow, pixelShift: true }
+		});
+		const secondTransform = secondContainer.querySelector('[data-testid="pixel-shift"]').style
+			.transform;
+
+		expect(secondTransform).not.toBe(firstTransform);
 	});
 });

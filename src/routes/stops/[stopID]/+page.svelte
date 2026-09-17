@@ -207,6 +207,8 @@
 				{lastUpdatedAt}
 				{isStale}
 				{fetchFailed}
+				pixelShift={data.config.nightModePixelShift}
+				hideChrome={data.config.nightModeHideChrome}
 			/>
 		{:else if isMultiStop}
 			<MultiStopBoard

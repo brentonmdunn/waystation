@@ -87,3 +87,36 @@ export function normalizeNightMode(raw) {
 		])
 	);
 }
+
+// A 9-position path over the 3x3 grid of {-1, 0, 1} units, ordered so each step moves to an
+// adjacent cell (including the wrap from the last entry back to the first).
+const PIXEL_SHIFT_PATH = [
+	{ unitX: 0, unitY: 0 },
+	{ unitX: 1, unitY: 0 },
+	{ unitX: 1, unitY: 1 },
+	{ unitX: 0, unitY: 1 },
+	{ unitX: -1, unitY: 1 },
+	{ unitX: -1, unitY: 0 },
+	{ unitX: -1, unitY: -1 },
+	{ unitX: 0, unitY: -1 },
+	{ unitX: 1, unitY: -1 }
+];
+
+/**
+ * Compute a slow-drifting pixel offset for burn-in mitigation, stepping through a fixed path.
+ * @param {number} minuteMs - the current time truncated to the minute, in epoch milliseconds
+ * @param {{ stepMinutes?: number, amplitude?: number }} [options]
+ * @returns {{ offsetX: number, offsetY: number }} offset in px, zero when minuteMs is invalid
+ */
+export function pixelShiftOffset(minuteMs, { stepMinutes = 5, amplitude = 24 } = {}) {
+	if (typeof minuteMs !== 'number' || Number.isNaN(minuteMs)) {
+		return { offsetX: 0, offsetY: 0 };
+	}
+	const stepIndex = Math.floor(minuteMs / (stepMinutes * 60_000));
+	const pathLength = PIXEL_SHIFT_PATH.length;
+	const position = PIXEL_SHIFT_PATH[((stepIndex % pathLength) + pathLength) % pathLength];
+	return {
+		offsetX: position.unitX * amplitude + 0,
+		offsetY: position.unitY * amplitude + 0
+	};
+}
