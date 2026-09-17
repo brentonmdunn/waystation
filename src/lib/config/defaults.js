@@ -1,4 +1,5 @@
 import { BRANDING_DEFAULTS, asObject, normalizeBranding } from './branding.js';
+import { NIGHT_MODE_DEFAULTS, normalizeNightMode } from './night-mode.js';
 
 export const THEMES = ['system', 'light', 'dark'];
 export const COLOR_MODES = ['color', 'mono'];
@@ -8,7 +9,8 @@ export const DEFAULT_CONFIG = {
 	updateInterval: 30,
 	theme: THEMES[0],
 	colorMode: COLOR_MODES[0],
-	branding: BRANDING_DEFAULTS
+	branding: BRANDING_DEFAULTS,
+	...NIGHT_MODE_DEFAULTS
 };
 
 function positiveInt(value, fallback) {
@@ -25,6 +27,7 @@ export function normalizeConfig(raw) {
 		updateInterval: positiveInt(source.updateInterval, DEFAULT_CONFIG.updateInterval),
 		theme: THEMES.includes(source.theme) ? source.theme : DEFAULT_CONFIG.theme,
 		colorMode: COLOR_MODES.includes(source.colorMode) ? source.colorMode : DEFAULT_CONFIG.colorMode,
-		branding: normalizeBranding(source.branding)
+		branding: normalizeBranding(source.branding),
+		...normalizeNightMode(source)
 	};
 }

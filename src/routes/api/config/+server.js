@@ -1,6 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { saveConfig, getConfig } from '$lib/config/config.js';
 import { asObject, validateBranding } from '$lib/config/branding.js';
+import { validateNightMode } from '$lib/config/night-mode.js';
 
 /** @type {import('./$types').RequestHandler} */
 export async function GET() {
@@ -21,7 +22,7 @@ export async function POST({ request }) {
 		return json({ error: 'Request body must be a JSON object' }, { status: 400 });
 	}
 
-	const errors = validateBranding(body.branding);
+	const errors = [...validateBranding(body.branding), ...validateNightMode(body)];
 	if (errors.length) return json({ error: errors.join('; ') }, { status: 400 });
 
 	saveConfig(body);
