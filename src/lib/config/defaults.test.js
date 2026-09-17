@@ -29,6 +29,7 @@ describe('normalizeConfig', () => {
 			nightModeStart: '22:00',
 			nightModeEnd: '06:00',
 			nightModeStyle: 'MINIMAL',
+			nightModeDimPercent: 85,
 			nightModePixelShift: false,
 			nightModeHideChrome: false
 		};

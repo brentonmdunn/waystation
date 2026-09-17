@@ -14,12 +14,14 @@ export function parseHHMM(value) {
 }
 
 export const NIGHT_MODE_STYLES = ['DIM', 'MINIMAL'];
+export const NIGHT_MODE_DIM_PERCENT_RANGE = Object.freeze({ min: 50, max: 90, step: 5 });
 
 export const NIGHT_MODE_DEFAULTS = Object.freeze({
 	nightModeEnabled: false,
 	nightModeStart: '',
 	nightModeEnd: '',
 	nightModeStyle: 'DIM',
+	nightModeDimPercent: 70,
 	nightModePixelShift: true,
 	nightModeHideChrome: true
 });
@@ -41,6 +43,13 @@ const FIELD_RULES = {
 	nightModeStyle: {
 		isValid: (value) => NIGHT_MODE_STYLES.includes(value),
 		error: `Night mode style must be one of: ${NIGHT_MODE_STYLES.join(', ')}`
+	},
+	nightModeDimPercent: {
+		isValid: (value) =>
+			Number.isInteger(value) &&
+			value >= NIGHT_MODE_DIM_PERCENT_RANGE.min &&
+			value <= NIGHT_MODE_DIM_PERCENT_RANGE.max,
+		error: `Night mode dim level must be a whole number from ${NIGHT_MODE_DIM_PERCENT_RANGE.min} to ${NIGHT_MODE_DIM_PERCENT_RANGE.max}`
 	},
 	nightModePixelShift: {
 		isValid: (value) => typeof value === 'boolean',

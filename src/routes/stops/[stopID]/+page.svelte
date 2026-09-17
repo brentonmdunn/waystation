@@ -237,6 +237,12 @@
 				rowCount={screenWindow.count}
 			/>
 		{/if}
-		{#if nightStyle === 'DIM'}<div class="night-dim-overlay" aria-hidden="true"></div>{/if}
+		{#if nightStyle === 'DIM'}
+			<div
+				class="night-dim-overlay"
+				aria-hidden="true"
+				style:--night-dim-opacity={data.config.nightModeDimPercent / 100}
+			></div>
+		{/if}
 	</div>
 </div>

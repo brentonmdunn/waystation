@@ -61,6 +61,7 @@ describe('validateNightMode', () => {
 			nightModeStart: '22:00',
 			nightModeEnd: '06:00',
 			nightModeStyle: 'MINIMAL',
+			nightModeDimPercent: 85,
 			nightModePixelShift: false,
 			nightModeHideChrome: false
 		};
@@ -87,6 +88,19 @@ describe('validateNightMode', () => {
 		expect(validateNightMode({ nightModeStyle: 'bright' })).toEqual([
 			'Night mode style must be one of: DIM, MINIMAL'
 		]);
+	});
+
+	it('returns one error for an out-of-range or non-integer dim level', () => {
+		for (const dimPercent of [49, 91, 72.5, '70']) {
+			expect(validateNightMode({ nightModeDimPercent: dimPercent })).toEqual([
+				'Night mode dim level must be a whole number from 50 to 90'
+			]);
+		}
+	});
+
+	it('accepts dim levels at the range bounds', () => {
+		expect(validateNightMode({ nightModeDimPercent: 50 })).toEqual([]);
+		expect(validateNightMode({ nightModeDimPercent: 90 })).toEqual([]);
 	});
 
 	it('returns one error for a non-boolean enabled flag', () => {
@@ -134,6 +148,7 @@ describe('normalizeNightMode', () => {
 			nightModeStart: '22:00',
 			nightModeEnd: '06:00',
 			nightModeStyle: 'MINIMAL',
+			nightModeDimPercent: 85,
 			nightModePixelShift: false,
 			nightModeHideChrome: false
 		};
@@ -146,6 +161,7 @@ describe('normalizeNightMode', () => {
 			nightModeStart: '25:00',
 			nightModeEnd: '25:00',
 			nightModeStyle: 'bright',
+			nightModeDimPercent: 150,
 			nightModePixelShift: 'yes',
 			nightModeHideChrome: 'yes'
 		};

@@ -10,7 +10,11 @@
 		isValidLogoUrl,
 		validateBranding
 	} from '$lib/config/branding.js';
-	import { NIGHT_MODE_STYLES, validateNightMode } from '$lib/config/night-mode.js';
+	import {
+		NIGHT_MODE_DIM_PERCENT_RANGE,
+		NIGHT_MODE_STYLES,
+		validateNightMode
+	} from '$lib/config/night-mode.js';
 	import { Power, Plus, Minus } from '@lucide/svelte';
 
 	import Header from '$components/navigation/header.svelte';
@@ -265,6 +269,28 @@
 					nightControlsDisabled
 				)}
 			</div>
+			{#if localConfig.nightModeStyle === 'DIM'}
+				<div
+					class="flex flex-col gap-y-2 rounded-xl border-4 border-gray-300 p-3"
+					class:opacity-50={nightControlsDisabled}
+				>
+					<label for="nightModeDimPercent-input" class="text-sm font-medium">
+						Dim level: {localConfig.nightModeDimPercent}%
+					</label>
+					<input
+						id="nightModeDimPercent-input"
+						type="range"
+						min={NIGHT_MODE_DIM_PERCENT_RANGE.min}
+						max={NIGHT_MODE_DIM_PERCENT_RANGE.max}
+						step={NIGHT_MODE_DIM_PERCENT_RANGE.step}
+						bind:value={localConfig.nightModeDimPercent}
+						disabled={nightControlsDisabled}
+					/>
+					<span class="text-sm text-gray-500">
+						Higher is darker. Multi-stop boards always use this level at night.
+					</span>
+				</div>
+			{/if}
 			{#if localConfig.nightModeStyle === 'MINIMAL'}
 				<div class="flex flex-col gap-3 md:flex-row">
 					<div
