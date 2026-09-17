@@ -10,6 +10,7 @@
 		isValidLogoUrl,
 		validateBranding
 	} from '$lib/config/branding.js';
+	import { NIGHT_MODE_STYLES, validateNightMode } from '$lib/config/night-mode.js';
 	import { Power, Plus, Minus } from '@lucide/svelte';
 
 	import Header from '$components/navigation/header.svelte';
@@ -29,10 +30,34 @@
 		isValidLogoUrl(localConfig.branding.logoUrl) ? localConfig.branding.logoUrl : data.logoUrl
 	);
 	const regionName = $derived(localConfig.branding.regionName || data.regionName);
+	const nightControlsDisabled = $derived(!localConfig.nightModeEnabled);
+	const minimalOptionsDisabled = $derived(
+		nightControlsDisabled || localConfig.nightModeStyle !== 'MINIMAL'
+	);
+
+	/**
+	 * Check night-mode fields that the UI should catch, beyond what the server validates.
+	 * @param {typeof localConfig} config - the config being saved
+	 * @returns {string[]} empty when there are no problems
+	 */
+	function checkNightModeWindow(config) {
+		if (!config.nightModeEnabled) return [];
+		const errors = [];
+		if (!config.nightModeStart || !config.nightModeEnd) {
+			errors.push('Night mode needs both a start and an end time');
+		} else if (config.nightModeStart === config.nightModeEnd) {
+			errors.push('Night mode start and end must be different');
+		}
+		return errors;
+	}
 
 	async function saveChanges() {
 		// Same rules the server applies, so the messages match by construction.
-		saveErrors = validateBranding(localConfig.branding);
+		saveErrors = [
+			...validateBranding(localConfig.branding),
+			...validateNightMode(localConfig),
+			...checkNightModeWindow(localConfig)
+		];
 		if (saveErrors.length) return;
 
 		try {
@@ -82,6 +107,7 @@
 
 	const THEME_LABELS = { system: 'Follow system', light: 'Light', dark: 'Dark' };
 	const COLOR_MODE_LABELS = { color: 'Color', mono: 'Monochromatic' };
+	const NIGHT_STYLE_LABELS = { DIM: 'Dim', MINIMAL: 'Minimal (single-stop only)' };
 
 	onMount(() => {
 		upTime();
@@ -170,10 +196,13 @@
 			{@render stepper('Departures Display Limit', 'maxDepartures')}
 			{@render stepper('Screen Update Interval (seconds)', 'updateInterval')}
 		</div>
-		{#snippet chooser(label, key, options, labels)}
-			<div class="flex w-full flex-col gap-y-3 rounded-xl border-4 border-gray-300 p-3">
+		{#snippet chooser(label, key, options, labels, disabled = false)}
+			<div
+				class="flex w-full flex-col gap-y-3 rounded-xl border-4 border-gray-300 p-3"
+				class:opacity-50={disabled}
+			>
 				<label for="{key}-select">{label}</label>
-				<select id="{key}-select" bind:value={localConfig[key]}>
+				<select id="{key}-select" bind:value={localConfig[key]} {disabled}>
 					{#each options as option (option)}
 						<option value={option}>{labels[option]}</option>
 					{/each}
@@ -184,6 +213,89 @@
 		<div class="flex w-full max-w-7xl flex-col gap-3 rounded-3xl bg-white p-5 text-xl md:flex-row">
 			{@render chooser('Board Theme', 'theme', THEMES, THEME_LABELS)}
 			{@render chooser('Board Colors', 'colorMode', COLOR_MODES, COLOR_MODE_LABELS)}
+		</div>
+
+		{#snippet timePicker(label, key)}
+			<div
+				class="flex w-full flex-col gap-y-2 rounded-xl border-4 border-gray-300 p-3"
+				class:opacity-50={nightControlsDisabled}
+			>
+				<label for="{key}-input" class="text-sm font-medium">{label}</label>
+				<div class="flex items-center gap-x-3">
+					<input
+						id="{key}-input"
+						type="time"
+						step="60"
+						bind:value={localConfig[key]}
+						disabled={nightControlsDisabled}
+						class="rounded border border-gray-300 px-3 py-2 text-base"
+					/>
+					{#if localConfig[key]}
+						<button
+							type="button"
+							class="text-sm text-gray-400 hover:text-red-500"
+							disabled={nightControlsDisabled}
+							onclick={() => {
+								localConfig[key] = '';
+							}}>Clear</button
+						>
+					{/if}
+				</div>
+			</div>
+		{/snippet}
+
+		<!-- Night Mode -->
+		<div class="flex w-full max-w-7xl flex-col gap-3 rounded-3xl bg-white p-5 text-xl">
+			<h2 class="text-lg font-bold text-gray-700">Night Mode</h2>
+			<p class="text-sm text-gray-500">
+				Uses the display's local clock. Start and end must differ. Windows can cross midnight (e.g.
+				22:00–06:00). Kiosks pick up changes on reload.
+			</p>
+			<div class="flex flex-col gap-y-3 rounded-xl border-4 border-gray-300 p-3">
+				<label class="flex items-center gap-x-2 text-base font-medium">
+					<input type="checkbox" bind:checked={localConfig.nightModeEnabled} />
+					Enable night mode
+				</label>
+			</div>
+			<div class="flex flex-col gap-3 md:flex-row">
+				{@render timePicker('Start', 'nightModeStart')}
+				{@render timePicker('End', 'nightModeEnd')}
+				{@render chooser(
+					'Night Style',
+					'nightModeStyle',
+					NIGHT_MODE_STYLES,
+					NIGHT_STYLE_LABELS,
+					nightControlsDisabled
+				)}
+			</div>
+			<div class="flex flex-col gap-3 md:flex-row">
+				<div
+					class="flex w-full flex-col gap-y-3 rounded-xl border-4 border-gray-300 p-3"
+					class:opacity-50={minimalOptionsDisabled}
+				>
+					<label class="flex items-center gap-x-2 text-base font-medium">
+						<input
+							type="checkbox"
+							bind:checked={localConfig.nightModePixelShift}
+							disabled={minimalOptionsDisabled}
+						/>
+						Drift content (pixel shift)
+					</label>
+				</div>
+				<div
+					class="flex w-full flex-col gap-y-3 rounded-xl border-4 border-gray-300 p-3"
+					class:opacity-50={minimalOptionsDisabled}
+				>
+					<label class="flex items-center gap-x-2 text-base font-medium">
+						<input
+							type="checkbox"
+							bind:checked={localConfig.nightModeHideChrome}
+							disabled={minimalOptionsDisabled}
+						/>
+						Hide logo and footer
+					</label>
+				</div>
+			</div>
 		</div>
 
 		<!-- Board Branding -->
