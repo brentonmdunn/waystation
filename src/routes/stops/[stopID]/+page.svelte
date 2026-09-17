@@ -8,6 +8,7 @@
 		computeScreenWindow,
 		diffArrivals,
 		formatBoardDeparture,
+		isNightMode,
 		paginateArrivals,
 		parseStopDepartures,
 		removeDuplicates,
@@ -51,6 +52,17 @@
 	let fetchInFlight = false;
 	const refreshIntervalMs = $derived(data.config.updateInterval * 1000);
 	const maxDepartures = $derived(data.config.maxDepartures);
+
+	// Truncated to the minute so night mode re-derives once a minute, not every clock tick.
+	const minuteMs = $derived(Math.floor(now.getTime() / 60_000) * 60_000);
+	const nightActive = $derived(
+		data.config.nightModeEnabled &&
+			isNightMode(new Date(minuteMs), data.config.nightModeStart, data.config.nightModeEnd)
+	);
+	// Minimal view is single-stop only for now; multi-stop always dims.
+	const nightStyle = $derived(
+		!nightActive ? null : isMultiStop ? 'DIM' : data.config.nightModeStyle
+	);
 
 	// Multi-screen pagination: slices this stop's departures for `data.screen`
 	// of `data.screens`. `count` also drives Board's rowCount below, so slicing
@@ -211,5 +223,6 @@
 				rowCount={screenWindow.count}
 			/>
 		{/if}
+		{#if nightStyle === 'DIM'}<div class="night-dim-overlay" aria-hidden="true"></div>{/if}
 	</div>
 </div>
