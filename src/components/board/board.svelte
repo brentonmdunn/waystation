@@ -1,6 +1,6 @@
 <script>
-	import { getLocale } from '$lib/paraglide/runtime.js';
 	import * as t from '$lib/paraglide/messages.js';
+	import { formatDateTime } from '$lib/formatters.js';
 	import AlertBadge from '$components/board/alert-badge.svelte';
 	import ClockBlock from '$components/board/clock-block.svelte';
 	import DepartureRow from '$components/board/departure-row.svelte';
@@ -26,7 +26,8 @@
 		showStopName = false,
 		rowCount = 5,
 		showFooter = true,
-		showAlerts = true
+		showAlerts = true,
+		hour12
 	} = $props();
 
 	const visible = $derived(arrivals.slice(0, rowCount));
@@ -98,7 +99,7 @@
 			</div>
 		</div>
 
-		<ClockBlock {now} />
+		<ClockBlock {now} {hour12} />
 	</header>
 
 	<!-- STOP IDENTITY -->
@@ -198,7 +199,7 @@
 			style:min-height="0"
 		>
 			{#each visible as arrival (arrival.tripId ?? `${arrival.route}-${arrival.departureAt}`)}
-				<DepartureRow {arrival} {showStopName} />
+				<DepartureRow {arrival} {showStopName} {hour12} />
 			{/each}
 			{#each Array.from({ length: emptyCount }, (_, i) => i) as i (i)}
 				<div style:border-bottom="1px dashed var(--rule)"></div>
@@ -243,18 +244,10 @@
 						{t.board_updating()}
 					{:else if stale}
 						{t.board_stale_prefix()}
-						{updatedDate.toLocaleTimeString(getLocale(), {
-							hour: 'numeric',
-							minute: '2-digit',
-							second: '2-digit'
-						})}
+						{formatDateTime(updatedDate, hour12)}
 					{:else}
 						{t.board_updated()}
-						{updatedDate.toLocaleTimeString(getLocale(), {
-							hour: 'numeric',
-							minute: '2-digit',
-							second: '2-digit'
-						})}
+						{formatDateTime(updatedDate, hour12)}
 					{/if}
 				</span>
 			</div>

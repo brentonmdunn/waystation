@@ -6,11 +6,11 @@
 	import RouteBadge from '$components/board/route-badge.svelte';
 	import StatusPip from '$components/board/status-pip.svelte';
 
-	let { arrival, showStopName = false } = $props();
+	let { arrival, showStopName = false, hour12 } = $props();
 
 	const isCancel = $derived(arrival.status === 'CANCEL');
 	const isSched = $derived(arrival.status === 'SCHED');
-	const clock = $derived(formatTime(arrival.departureAt));
+	const clock = $derived(formatTime(arrival.departureAt, hour12));
 	// Board grid renders LTR regardless of document direction.
 	// Swap TO label and destination text order for Arabic so the
 	// Arabic label appears after the destination, not before it.
@@ -89,7 +89,7 @@
 		</div>
 	</div>
 
-	<ArrivalHero {arrival} />
+	<ArrivalHero {arrival} {hour12} />
 
 	<div dir="ltr" style:text-align="right">
 		<StatusPip status={arrival.status} delta={arrival.delta} large />
